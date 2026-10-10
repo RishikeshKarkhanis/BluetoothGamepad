@@ -1,0 +1,75 @@
+-- Merging decision tree log ---
+manifest
+ADDED from /Users/rishikeshkarkhanis/Programming/Controller/BluetoothGamepad/app/src/main/AndroidManifest.xml:1:1-28:12
+INJECTED from /Users/rishikeshkarkhanis/Programming/Controller/BluetoothGamepad/app/src/main/AndroidManifest.xml:1:1-28:12
+INJECTED from /Users/rishikeshkarkhanis/Programming/Controller/BluetoothGamepad/app/src/main/AndroidManifest.xml:1:1-28:12
+INJECTED from /Users/rishikeshkarkhanis/Programming/Controller/BluetoothGamepad/app/src/main/AndroidManifest.xml:1:1-28:12
+	package
+		INJECTED from /Users/rishikeshkarkhanis/Programming/Controller/BluetoothGamepad/app/src/main/AndroidManifest.xml
+	android:versionName
+		INJECTED from /Users/rishikeshkarkhanis/Programming/Controller/BluetoothGamepad/app/src/main/AndroidManifest.xml
+	android:versionCode
+		INJECTED from /Users/rishikeshkarkhanis/Programming/Controller/BluetoothGamepad/app/src/main/AndroidManifest.xml
+	xmlns:android
+		ADDED from /Users/rishikeshkarkhanis/Programming/Controller/BluetoothGamepad/app/src/main/AndroidManifest.xml:1:11-69
+uses-feature#android.hardware.bluetooth
+ADDED from /Users/rishikeshkarkhanis/Programming/Controller/BluetoothGamepad/app/src/main/AndroidManifest.xml:3:5-5:35
+	android:required
+		ADDED from /Users/rishikeshkarkhanis/Programming/Controller/BluetoothGamepad/app/src/main/AndroidManifest.xml:5:9-32
+	android:name
+		ADDED from /Users/rishikeshkarkhanis/Programming/Controller/BluetoothGamepad/app/src/main/AndroidManifest.xml:4:9-50
+uses-permission#android.permission.BLUETOOTH
+ADDED from /Users/rishikeshkarkhanis/Programming/Controller/BluetoothGamepad/app/src/main/AndroidManifest.xml:7:5-95
+	android:maxSdkVersion
+		ADDED from /Users/rishikeshkarkhanis/Programming/Controller/BluetoothGamepad/app/src/main/AndroidManifest.xml:7:66-92
+	android:name
+		ADDED from /Users/rishikeshkarkhanis/Programming/Controller/BluetoothGamepad/app/src/main/AndroidManifest.xml:7:22-65
+uses-permission#android.permission.BLUETOOTH_ADMIN
+ADDED from /Users/rishikeshkarkhanis/Programming/Controller/BluetoothGamepad/app/src/main/AndroidManifest.xml:8:5-101
+	android:maxSdkVersion
+		ADDED from /Users/rishikeshkarkhanis/Programming/Controller/BluetoothGamepad/app/src/main/AndroidManifest.xml:8:72-98
+	android:name
+		ADDED from /Users/rishikeshkarkhanis/Programming/Controller/BluetoothGamepad/app/src/main/AndroidManifest.xml:8:22-71
+uses-permission#android.permission.BLUETOOTH_CONNECT
+ADDED from /Users/rishikeshkarkhanis/Programming/Controller/BluetoothGamepad/app/src/main/AndroidManifest.xml:9:5-76
+	android:name
+		ADDED from /Users/rishikeshkarkhanis/Programming/Controller/BluetoothGamepad/app/src/main/AndroidManifest.xml:9:22-73
+uses-permission#android.permission.BLUETOOTH_ADVERTISE
+ADDED from /Users/rishikeshkarkhanis/Programming/Controller/BluetoothGamepad/app/src/main/AndroidManifest.xml:10:5-78
+	android:name
+		ADDED from /Users/rishikeshkarkhanis/Programming/Controller/BluetoothGamepad/app/src/main/AndroidManifest.xml:10:22-75
+application
+ADDED from /Users/rishikeshkarkhanis/Programming/Controller/BluetoothGamepad/app/src/main/AndroidManifest.xml:12:5-27:19
+INJECTED from /Users/rishikeshkarkhanis/Programming/Controller/BluetoothGamepad/app/src/main/AndroidManifest.xml:12:5-27:19
+	android:extractNativeLibs
+		INJECTED from /Users/rishikeshkarkhanis/Programming/Controller/BluetoothGamepad/app/src/main/AndroidManifest.xml
+	android:label
+		ADDED from /Users/rishikeshkarkhanis/Programming/Controller/BluetoothGamepad/app/src/main/AndroidManifest.xml:14:9-42
+	android:allowBackup
+		ADDED from /Users/rishikeshkarkhanis/Programming/Controller/BluetoothGamepad/app/src/main/AndroidManifest.xml:13:9-36
+	android:theme
+		ADDED from /Users/rishikeshkarkhanis/Programming/Controller/BluetoothGamepad/app/src/main/AndroidManifest.xml:15:9-72
+activity#com.bluetoothgamepad.MainActivity
+ADDED from /Users/rishikeshkarkhanis/Programming/Controller/BluetoothGamepad/app/src/main/AndroidManifest.xml:17:9-26:20
+	android:exported
+		ADDED from /Users/rishikeshkarkhanis/Programming/Controller/BluetoothGamepad/app/src/main/AndroidManifest.xml:19:13-36
+	android:name
+		ADDED from /Users/rishikeshkarkhanis/Programming/Controller/BluetoothGamepad/app/src/main/AndroidManifest.xml:18:13-41
+intent-filter#action:name:android.intent.action.MAIN+category:name:android.intent.category.LAUNCHER
+ADDED from /Users/rishikeshkarkhanis/Programming/Controller/BluetoothGamepad/app/src/main/AndroidManifest.xml:21:13-24:29
+action#android.intent.action.MAIN
+ADDED from /Users/rishikeshkarkhanis/Programming/Controller/BluetoothGamepad/app/src/main/AndroidManifest.xml:22:17-69
+	android:name
+		ADDED from /Users/rishikeshkarkhanis/Programming/Controller/BluetoothGamepad/app/src/main/AndroidManifest.xml:22:25-66
+category#android.intent.category.LAUNCHER
+ADDED from /Users/rishikeshkarkhanis/Programming/Controller/BluetoothGamepad/app/src/main/AndroidManifest.xml:23:17-77
+	android:name
+		ADDED from /Users/rishikeshkarkhanis/Programming/Controller/BluetoothGamepad/app/src/main/AndroidManifest.xml:23:27-74
+uses-sdk
+INJECTED from /Users/rishikeshkarkhanis/Programming/Controller/BluetoothGamepad/app/src/main/AndroidManifest.xml reason: use-sdk injection requested
+INJECTED from /Users/rishikeshkarkhanis/Programming/Controller/BluetoothGamepad/app/src/main/AndroidManifest.xml
+INJECTED from /Users/rishikeshkarkhanis/Programming/Controller/BluetoothGamepad/app/src/main/AndroidManifest.xml
+	android:targetSdkVersion
+		INJECTED from /Users/rishikeshkarkhanis/Programming/Controller/BluetoothGamepad/app/src/main/AndroidManifest.xml
+	android:minSdkVersion
+		INJECTED from /Users/rishikeshkarkhanis/Programming/Controller/BluetoothGamepad/app/src/main/AndroidManifest.xml

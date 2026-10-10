@@ -1,0 +1,66 @@
+1<?xml version="1.0" encoding="utf-8"?>
+2<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+3    package="com.bluetoothgamepad"
+4    android:versionCode="1"
+5    android:versionName="1.0" >
+6
+7    <uses-sdk
+8        android:minSdkVersion="28"
+9        android:targetSdkVersion="35" />
+10
+11    <uses-feature
+11-->/Users/rishikeshkarkhanis/Programming/Controller/BluetoothGamepad/app/src/main/AndroidManifest.xml:3:5-5:35
+12        android:name="android.hardware.bluetooth"
+12-->/Users/rishikeshkarkhanis/Programming/Controller/BluetoothGamepad/app/src/main/AndroidManifest.xml:4:9-50
+13        android:required="true" />
+13-->/Users/rishikeshkarkhanis/Programming/Controller/BluetoothGamepad/app/src/main/AndroidManifest.xml:5:9-32
+14
+15    <uses-permission
+15-->/Users/rishikeshkarkhanis/Programming/Controller/BluetoothGamepad/app/src/main/AndroidManifest.xml:7:5-95
+16        android:name="android.permission.BLUETOOTH"
+16-->/Users/rishikeshkarkhanis/Programming/Controller/BluetoothGamepad/app/src/main/AndroidManifest.xml:7:22-65
+17        android:maxSdkVersion="30" />
+17-->/Users/rishikeshkarkhanis/Programming/Controller/BluetoothGamepad/app/src/main/AndroidManifest.xml:7:66-92
+18    <uses-permission
+18-->/Users/rishikeshkarkhanis/Programming/Controller/BluetoothGamepad/app/src/main/AndroidManifest.xml:8:5-101
+19        android:name="android.permission.BLUETOOTH_ADMIN"
+19-->/Users/rishikeshkarkhanis/Programming/Controller/BluetoothGamepad/app/src/main/AndroidManifest.xml:8:22-71
+20        android:maxSdkVersion="30" />
+20-->/Users/rishikeshkarkhanis/Programming/Controller/BluetoothGamepad/app/src/main/AndroidManifest.xml:8:72-98
+21    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+21-->/Users/rishikeshkarkhanis/Programming/Controller/BluetoothGamepad/app/src/main/AndroidManifest.xml:9:5-76
+21-->/Users/rishikeshkarkhanis/Programming/Controller/BluetoothGamepad/app/src/main/AndroidManifest.xml:9:22-73
+22    <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
+22-->/Users/rishikeshkarkhanis/Programming/Controller/BluetoothGamepad/app/src/main/AndroidManifest.xml:10:5-78
+22-->/Users/rishikeshkarkhanis/Programming/Controller/BluetoothGamepad/app/src/main/AndroidManifest.xml:10:22-75
+23
+24    <application
+24-->/Users/rishikeshkarkhanis/Programming/Controller/BluetoothGamepad/app/src/main/AndroidManifest.xml:12:5-27:19
+25        android:allowBackup="false"
+25-->/Users/rishikeshkarkhanis/Programming/Controller/BluetoothGamepad/app/src/main/AndroidManifest.xml:13:9-36
+26        android:debuggable="true"
+27        android:extractNativeLibs="false"
+28        android:label="Bluetooth Gamepad"
+28-->/Users/rishikeshkarkhanis/Programming/Controller/BluetoothGamepad/app/src/main/AndroidManifest.xml:14:9-42
+29        android:theme="@android:style/Theme.Material.Light.NoActionBar" >
+29-->/Users/rishikeshkarkhanis/Programming/Controller/BluetoothGamepad/app/src/main/AndroidManifest.xml:15:9-72
+30        <activity
+30-->/Users/rishikeshkarkhanis/Programming/Controller/BluetoothGamepad/app/src/main/AndroidManifest.xml:17:9-26:20
+31            android:name="com.bluetoothgamepad.MainActivity"
+31-->/Users/rishikeshkarkhanis/Programming/Controller/BluetoothGamepad/app/src/main/AndroidManifest.xml:18:13-41
+32            android:exported="true" >
+32-->/Users/rishikeshkarkhanis/Programming/Controller/BluetoothGamepad/app/src/main/AndroidManifest.xml:19:13-36
+33            <intent-filter>
+33-->/Users/rishikeshkarkhanis/Programming/Controller/BluetoothGamepad/app/src/main/AndroidManifest.xml:21:13-24:29
+34                <action android:name="android.intent.action.MAIN" />
+34-->/Users/rishikeshkarkhanis/Programming/Controller/BluetoothGamepad/app/src/main/AndroidManifest.xml:22:17-69
+34-->/Users/rishikeshkarkhanis/Programming/Controller/BluetoothGamepad/app/src/main/AndroidManifest.xml:22:25-66
+35
+36                <category android:name="android.intent.category.LAUNCHER" />
+36-->/Users/rishikeshkarkhanis/Programming/Controller/BluetoothGamepad/app/src/main/AndroidManifest.xml:23:17-77
+36-->/Users/rishikeshkarkhanis/Programming/Controller/BluetoothGamepad/app/src/main/AndroidManifest.xml:23:27-74
+37            </intent-filter>
+38        </activity>
+39    </application>
+40
+41</manifest>
