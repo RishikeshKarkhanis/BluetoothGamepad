@@ -7,7 +7,9 @@ import android.content.pm.PackageManager
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.Path
 import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
@@ -24,9 +26,9 @@ import kotlin.math.min
 import kotlin.math.sqrt
 
 class MainActivity : Activity() {
-
     private lateinit var status: TextView
-    private lateinit var registerButton: Button
+    private lateinit var registerButton: TextView
+    private lateinit var statusDot: View
 
     private var hid: BluetoothHidDevice? = null
     private var connectedDevice: BluetoothDevice? = null
@@ -42,206 +44,384 @@ class MainActivity : Activity() {
     private val handler = Handler(Looper.getMainLooper())
     private val executor = Executors.newSingleThreadExecutor()
 
-    // Report ID 1: 16 buttons + X, Y, Rx, Ry.
+    // Keep the proven HID descriptor/report layout unchanged.
     private val descriptor = byteArrayOf(
-        0x05, 0x01,
-        0x09, 0x05,
-        0xA1.toByte(), 0x01,
+        0x05, 0x01, 0x09, 0x05, 0xA1.toByte(), 0x01,
         0x85.toByte(), 0x01,
-
-        0x05, 0x09,
-        0x19, 0x01,
-        0x29, 0x10,
-        0x15, 0x00,
-        0x25, 0x01,
-        0x95.toByte(), 0x10,
-        0x75, 0x01,
-        0x81.toByte(), 0x02,
-
+        0x05, 0x09, 0x19, 0x01, 0x29, 0x10,
+        0x15, 0x00, 0x25, 0x01, 0x95.toByte(), 0x10,
+        0x75, 0x01, 0x81.toByte(), 0x02,
         0x05, 0x01,
         0x09, 0x30, // X
         0x09, 0x31, // Y
         0x09, 0x33, // Rx
         0x09, 0x34, // Ry
-        0x15, 0x81.toByte(),
-        0x25, 0x7F,
-        0x75, 0x08,
-        0x95.toByte(), 0x04,
-        0x81.toByte(), 0x02,
-        0xC0.toByte()
+        0x15, 0x81.toByte(), 0x25, 0x7F,
+        0x75, 0x08, 0x95.toByte(), 0x04,
+        0x81.toByte(), 0x02, 0xC0.toByte()
     )
+
+    private val bg = Color.rgb(13, 16, 23)
+    private val panel = Color.rgb(24, 29, 39)
+    private val muted = Color.rgb(151, 161, 179)
+    private val accent = Color.rgb(86, 151, 255)
+
+    private lateinit var pageRoot: LinearLayout
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        window.statusBarColor = bg
+        window.navigationBarColor = bg
+        @Suppress("DEPRECATION")
+        window.decorView.systemUiVisibility = (
+            View.SYSTEM_UI_FLAG_FULLSCREEN or
+                View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
+                View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY or
+                View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+            )
+        showConnectionPage()
+    }
 
-        window.statusBarColor = Color.rgb(18, 20, 27)
-        window.navigationBarColor = Color.rgb(18, 20, 27)
+    private fun makeRoot(): LinearLayout = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        gravity = Gravity.CENTER_HORIZONTAL
+        setPadding(dp(12), dp(8), dp(12), dp(8))
+        setBackgroundColor(bg)
+    }
 
-        val root = LinearLayout(this).apply {
+    private fun addBrand(root: LinearLayout, subtitle: String, showBack: Boolean = false) {
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        val logo = TextView(this).apply {
+            text = "✦"; textSize = 24f; gravity = Gravity.CENTER
+            setTextColor(Color.WHITE); background = rounded(Color.rgb(47, 58, 78), 14)
+            layoutParams = LinearLayout.LayoutParams(dp(44), dp(44))
+        }
+        row.addView(logo)
+        val titleBox = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER_HORIZONTAL
-            setPadding(14, 14, 14, 12)
-            setBackgroundColor(Color.rgb(24, 27, 35))
+            setPadding(dp(10), 0, 0, 0)
         }
+        titleBox.addView(text("DUALSENSE", 17f, Color.WHITE, true))
+        titleBox.addView(text(subtitle, 9f, muted, true).apply { letterSpacing = 0.13f })
+        row.addView(titleBox, LinearLayout.LayoutParams(0, -2, 1f))
+        if (showBack) {
+            val back = text("← CONNECTION", 10f, accent, true).apply {
+                gravity = Gravity.CENTER
+                setPadding(dp(10), dp(9), dp(10), dp(9))
+                background = rounded(Color.rgb(27, 47, 77), 18)
+                setOnClickListener { showConnectionPage() }
+            }
+            row.addView(back)
+        } else {
+            row.addView(text("BETA", 10f, accent, true).apply {
+                setPadding(dp(10), dp(6), dp(10), dp(6))
+                background = rounded(Color.rgb(27, 47, 77), 20)
+            })
+        }
+        root.addView(row)
+    }
 
-        status = TextView(this).apply {
-            text = "BLUETOOTH GAMEPAD • NOT CONNECTED"
-            textSize = 13f
+    private fun showConnectionPage() {
+        val root = makeRoot()
+        addBrand(root, "BLUETOOTH GAMEPAD")
+        addGap(root, 18)
+
+        val hero = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
-            setTextColor(Color.WHITE)
-            setPadding(4, 8, 4, 8)
+            setPadding(dp(20), dp(24), dp(20), dp(24))
+            background = rounded(panel, 24, Color.rgb(44, 52, 67), dp(1))
         }
-        root.addView(status)
+        hero.addView(text("YOUR MAC. YOUR CONTROLLER.", 18f, Color.WHITE, true).apply { gravity = Gravity.CENTER })
+        addGap(hero, 8)
+        hero.addView(text("Connect over Bluetooth HID, then switch to the\ncontroller screen to play.", 12f, muted, false).apply { gravity = Gravity.CENTER; textAlignment = View.TEXT_ALIGNMENT_CENTER })
+        root.addView(hero, LinearLayout.LayoutParams(-1, 0, 1f))
+        addGap(root, 12)
 
-        registerButton = Button(this).apply {
-            text = "REGISTER / CONNECT"
+        val statusCard = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(15), dp(14), dp(15), dp(14))
+            background = rounded(panel, 18, Color.rgb(44, 52, 67), dp(1))
+        }
+        statusDot = View(this).apply {
+            background = rounded(Color.rgb(239, 174, 74), 20)
+            layoutParams = LinearLayout.LayoutParams(dp(9), dp(9))
+        }
+        statusCard.addView(statusDot)
+        status = text("NOT CONNECTED", 12f, Color.WHITE, true).apply { setPadding(dp(10), 0, 0, 0) }
+        statusCard.addView(status, LinearLayout.LayoutParams(0, -2, 1f))
+        statusCard.addView(text("BLUETOOTH HID", 10f, muted, true))
+        root.addView(statusCard)
+        addGap(root, 8)
+
+        registerButton = text("CONNECT TO MAC     →", 13f, Color.WHITE, true).apply {
+            gravity = Gravity.CENTER
+            setPadding(dp(12), dp(14), dp(12), dp(14))
+            background = rounded(Color.rgb(42, 105, 211), 16)
+            isClickable = true; isFocusable = true
             setOnClickListener { connectHid() }
         }
-        root.addView(registerButton)
-
-        root.addView(View(this), LinearLayout.LayoutParams(1, 12))
-
-        // LEFT STICK + D-PAD
-        val leftPanel = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
+        root.addView(registerButton, LinearLayout.LayoutParams(-1, -2))
+        addGap(root, 8)
+        val openPad = text("OPEN CONTROLLER  →", 12f, Color.WHITE, true).apply {
             gravity = Gravity.CENTER
+            setPadding(dp(12), dp(12), dp(12), dp(12))
+            background = rounded(Color.rgb(39, 44, 55), 16, Color.rgb(65, 75, 94), dp(1))
+            setOnClickListener { showControllerPage() }
         }
+        root.addView(openPad, LinearLayout.LayoutParams(-1, -2))
+        setContentView(root)
+        pageRoot = root
+    }
 
-        val leftStick = AnalogStick("LEFT STICK") { x, y ->
-            xAxis = x
-            yAxis = -y
-            sendInputReport()
-        }
-
-        leftPanel.addView(
-            leftStick,
-            LinearLayout.LayoutParams(0, 220, 1f)
-        )
-
-        val dpad = LinearLayout(this).apply {
+    private fun showControllerPage() {
+        // Dedicated controller screen: full white canvas, no dark branding/header strip.
+        val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
+            setPadding(0, 0, 0, 0)
+            setBackgroundColor(Color.WHITE)
         }
 
-        dpad.addView(gameButton("▲", 5))
-
-        val dpadMiddle = LinearLayout(this).apply {
+        val controllerPanel = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
+            setPadding(dp(10), dp(8), dp(10), dp(8))
+            setBackgroundColor(Color.WHITE)
         }
+        root.addView(controllerPanel, LinearLayout.LayoutParams(-1, -1))
 
-        dpadMiddle.addView(gameButton("◀", 7))
-        dpadMiddle.addView(gameButton("●", 11))
-        dpadMiddle.addView(gameButton("▶", 8))
-
-        dpad.addView(dpadMiddle)
-        dpad.addView(gameButton("▼", 6))
-
-        leftPanel.addView(
-            dpad,
-            LinearLayout.LayoutParams(0, 220, 1f)
-        )
-
-        root.addView(leftPanel)
-
-        // SELECT + START
-        val centerButtons = LinearLayout(this).apply {
-            gravity = Gravity.CENTER
+        val panelHeader = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
         }
+        panelHeader.addView(text("CONTROLLER", 11f, Color.rgb(70, 78, 92), true), LinearLayout.LayoutParams(0, -2, 1f))
+        panelHeader.addView(text("● LIVE INPUT", 9f, Color.rgb(36, 132, 88), true))
+        controllerPanel.addView(panelHeader)
+        addGap(controllerPanel, 4)
 
-        centerButtons.addView(gameButton("SELECT", 9))
-        centerButtons.addView(gameButton("START", 10))
-        root.addView(centerButtons)
+        val touchpad = View(this).apply {
+            background = rounded(Color.rgb(39, 44, 55), 20, Color.rgb(115, 122, 135), dp(1))
+            layoutParams = LinearLayout.LayoutParams(dp(150), dp(36)).apply { gravity = Gravity.CENTER }
+        }
+        controllerPanel.addView(touchpad)
+        addGap(controllerPanel, 5)
 
-        // RIGHT STICK + FACE BUTTONS
-        val rightPanel = LinearLayout(this).apply {
+        val shoulderRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
         }
+        shoulderRow.addView(psPill("L2", 7))
+        shoulderRow.addView(View(this), LinearLayout.LayoutParams(dp(6), dp(1)))
+        shoulderRow.addView(psPill("L1", 5))
+        shoulderRow.addView(View(this), LinearLayout.LayoutParams(0, dp(1), 1f))
+        shoulderRow.addView(psPill("R1", 6))
+        shoulderRow.addView(View(this), LinearLayout.LayoutParams(dp(6), dp(1)))
+        shoulderRow.addView(psPill("R2", 8))
+        controllerPanel.addView(shoulderRow)
+        addGap(controllerPanel, 4)
 
-        val rightStick = AnalogStick("RIGHT STICK") { x, y ->
-            rxAxis = -y
+        val upper = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        val dpadBox = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER }
+        // D-pad uses dedicated button bits 13-16; shoulder buttons remain separate.
+        dpadBox.addView(psButton("↑", 13, Color.rgb(48, 55, 69), 34))
+        val dpadMiddle = LinearLayout(this).apply { gravity = Gravity.CENTER }
+        dpadMiddle.addView(psButton("←", 14, Color.rgb(48, 55, 69), 34))
+        dpadMiddle.addView(View(this), LinearLayout.LayoutParams(dp(28), dp(28)))
+        dpadMiddle.addView(psButton("→", 15, Color.rgb(48, 55, 69), 34))
+        dpadBox.addView(dpadMiddle)
+        dpadBox.addView(psButton("↓", 16, Color.rgb(48, 55, 69), 34))
+        upper.addView(dpadBox, LinearLayout.LayoutParams(0, -2, 1f))
+
+        val faceBox = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER }
+        faceBox.addView(psButton("△", 4, Color.rgb(53, 165, 125), 34))
+        val faceMiddle = LinearLayout(this).apply { gravity = Gravity.CENTER }
+        faceMiddle.addView(psButton("□", 3, Color.rgb(226, 91, 150), 34))
+        faceMiddle.addView(View(this), LinearLayout.LayoutParams(dp(6), dp(6)))
+        faceMiddle.addView(psButton("○", 2, Color.rgb(236, 93, 101), 34))
+        faceBox.addView(faceMiddle)
+        faceBox.addView(psButton("×", 1, Color.rgb(73, 143, 237), 34))
+        upper.addView(faceBox, LinearLayout.LayoutParams(0, -2, 1f))
+        controllerPanel.addView(upper)
+        addGap(controllerPanel, 2)
+
+        val sticks = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER }
+        val leftStick = AnalogStick("L", true) { x, y ->
+            xAxis = x
+            yAxis = -y // Keep the GTA SA-tested mapping unchanged.
+            sendInputReport()
+        }
+        val rightStick = AnalogStick("R", true) { x, y ->
+            rxAxis = -y // Keep the GTA SA-tested mapping unchanged.
             ryAxis = x
             sendInputReport()
         }
+        sticks.addView(leftStick, LinearLayout.LayoutParams(0, -1, 1f))
+        sticks.addView(rightStick, LinearLayout.LayoutParams(0, -1, 1f))
+        controllerPanel.addView(sticks, LinearLayout.LayoutParams(-1, 0, 1f))
+        addGap(controllerPanel, 2)
 
-        rightPanel.addView(
-            rightStick,
-            LinearLayout.LayoutParams(0, 220, 1f)
-        )
-
-        val face = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
+        val stickClickRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
         }
+        stickClickRow.addView(psPill("L3", 11))
+        stickClickRow.addView(View(this), LinearLayout.LayoutParams(dp(18), dp(1)))
+        stickClickRow.addView(psPill("SELECT", 9))
+        stickClickRow.addView(View(this), LinearLayout.LayoutParams(dp(10), dp(1)))
+        stickClickRow.addView(psPill("START", 10))
+        stickClickRow.addView(View(this), LinearLayout.LayoutParams(dp(18), dp(1)))
+        stickClickRow.addView(psPill("R3", 12))
+        controllerPanel.addView(stickClickRow)
 
-        face.addView(gameButton("Y", 4))
-
-        val faceMiddle = LinearLayout(this).apply {
-            gravity = Gravity.CENTER
-        }
-
-        faceMiddle.addView(gameButton("X", 3))
-        faceMiddle.addView(gameButton("B", 2))
-        face.addView(faceMiddle)
-        face.addView(gameButton("A", 1))
-
-        rightPanel.addView(
-            face,
-            LinearLayout.LayoutParams(0, 220, 1f)
-        )
-
-        root.addView(rightPanel)
-
-        val note = TextView(this).apply {
-            text = "Hold buttons • Drag sticks • Release to recenter"
-            textSize = 12f
-            gravity = Gravity.CENTER
-            setTextColor(Color.LTGRAY)
-            setPadding(4, 8, 4, 4)
-        }
-
-        root.addView(note)
         setContentView(root)
+        pageRoot = root
     }
 
-    private fun gameButton(label: String, number: Int): Button {
-        return Button(this).apply {
-            text = label
-            textSize = 13f
-            isAllCaps = false
-            minWidth = 48
-            minHeight = 48
+    private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 
-            setOnTouchListener { view, event ->
-                when (event.actionMasked) {
-                    MotionEvent.ACTION_DOWN -> {
-                        setButton(number, true)
-                        view.isPressed = true
-                        true
-                    }
+    private fun rounded(color: Int, radius: Int, strokeColor: Int? = null, strokeWidth: Int = 0): GradientDrawable =
+        GradientDrawable().apply {
+            setColor(color)
+            cornerRadius = dp(radius).toFloat()
+            if (strokeColor != null && strokeWidth > 0) setStroke(strokeWidth, strokeColor)
+        }
 
-                    MotionEvent.ACTION_UP,
-                    MotionEvent.ACTION_CANCEL -> {
-                        setButton(number, false)
-                        view.isPressed = false
-                        true
-                    }
+    private fun text(value: String, size: Float, color: Int, bold: Boolean): TextView = TextView(this).apply {
+        text = value
+        textSize = size
+        setTextColor(color)
+        typeface = if (bold) Typeface.create("sans-serif", Typeface.BOLD) else Typeface.create("sans-serif", Typeface.NORMAL)
+        gravity = Gravity.CENTER_VERTICAL
+    }
 
-                    else -> true
+    private fun addGap(parent: LinearLayout, height: Int) {
+        parent.addView(View(this), LinearLayout.LayoutParams(1, dp(height)))
+    }
+
+    private fun psPill(label: String, number: Int): View = TextView(this).apply {
+        text = label
+        textSize = 10f
+        typeface = Typeface.DEFAULT_BOLD
+        gravity = Gravity.CENTER
+        setTextColor(Color.rgb(54, 63, 79))
+        background = rounded(Color.rgb(216, 221, 230), 14, Color.rgb(186, 193, 205), dp(1))
+        setPadding(dp(15), dp(9), dp(15), dp(9))
+        setOnTouchListener { view, event ->
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> { setButton(number, true); view.alpha = 0.65f; true }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> { setButton(number, false); view.alpha = 1f; true }
+                else -> true
+            }
+        }
+    }
+
+    private fun psButton(label: String, number: Int, color: Int, size: Int): View = FaceButton(label, number, color, size)
+
+    private inner class FaceButton(
+        private val label: String,
+        private val number: Int,
+        private val fillColor: Int,
+        size: Int
+    ) : View(this@MainActivity) {
+        private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+        private val side = dp(size)
+        init { layoutParams = LinearLayout.LayoutParams(side, side).apply { setMargins(dp(2), dp(2), dp(2), dp(2)) } }
+        override fun onDraw(canvas: Canvas) {
+            super.onDraw(canvas)
+            val cx = width / 2f; val cy = height / 2f
+            paint.color = Color.argb(35, 0, 0, 0); paint.style = Paint.Style.FILL
+            canvas.drawCircle(cx, cy + dp(2), min(width, height) * 0.46f, paint)
+            paint.color = fillColor
+            canvas.drawCircle(cx, cy, min(width, height) * 0.45f, paint)
+            paint.color = Color.WHITE; paint.textAlign = Paint.Align.CENTER
+            paint.typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
+            paint.textSize = dp(21).toFloat()
+            canvas.drawText(label, cx, cy - (paint.ascent() + paint.descent()) / 2f, paint)
+        }
+        override fun onTouchEvent(event: MotionEvent): Boolean {
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> { setButton(number, true); alpha = 0.72f; invalidate(); return true }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> { setButton(number, false); alpha = 1f; invalidate(); return true }
+            }
+            return true
+        }
+    }
+
+    private inner class AnalogStick(
+        private val label: String,
+        private val lightTheme: Boolean,
+        private val onAxis: (Int, Int) -> Unit
+    ) : View(this@MainActivity) {
+        private val basePaint = Paint(Paint.ANTI_ALIAS_FLAG)
+        private val ringPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = dp(2).toFloat() }
+        private val knobPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+        private val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            textAlign = Paint.Align.CENTER; textSize = dp(11).toFloat(); typeface = Typeface.DEFAULT_BOLD
+        }
+        private var dx = 0f
+        private var dy = 0f
+
+        override fun onDraw(canvas: Canvas) {
+            super.onDraw(canvas)
+            val cx = width / 2f
+            val cy = height / 2f + dp(5)
+            val radius = min(width * 0.22f, height * 0.39f)
+            val knobRadius = radius * 0.56f
+            labelPaint.color = Color.rgb(87, 96, 112)
+            canvas.drawText(if (label == "L") "LEFT STICK" else "RIGHT STICK", cx, dp(13).toFloat(), labelPaint)
+            basePaint.color = Color.rgb(210, 216, 226)
+            canvas.drawCircle(cx, cy, radius, basePaint)
+            ringPaint.color = Color.rgb(160, 169, 184)
+            canvas.drawCircle(cx, cy, radius, ringPaint)
+            ringPaint.color = Color.rgb(181, 189, 201)
+            canvas.drawLine(cx - radius, cy, cx + radius, cy, ringPaint)
+            canvas.drawLine(cx, cy - radius, cx, cy + radius, ringPaint)
+            basePaint.color = Color.rgb(170, 179, 193)
+            canvas.drawCircle(cx + dx, cy + dy, knobRadius + dp(3), basePaint)
+            knobPaint.color = Color.rgb(48, 55, 68)
+            canvas.drawCircle(cx + dx, cy + dy, knobRadius, knobPaint)
+            ringPaint.color = Color.rgb(91, 101, 119)
+            canvas.drawCircle(cx + dx, cy + dy, knobRadius, ringPaint)
+        }
+
+        override fun onTouchEvent(event: MotionEvent): Boolean {
+            val radius = (min(width * 0.22f, height * 0.39f)).coerceAtLeast(1f)
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE -> {
+                    var nx = event.x - width / 2f
+                    var ny = event.y - (height / 2f + dp(5))
+                    val distance = sqrt(nx * nx + ny * ny)
+                    if (distance > radius) { nx = nx / distance * radius; ny = ny / distance * radius }
+                    dx = nx; dy = ny
+                    val x = (nx / radius * 127f).toInt().coerceIn(-127, 127)
+                    val y = (-ny / radius * 127f).toInt().coerceIn(-127, 127)
+                    Log.d("GamepadStick", "$label: x=$x, y=$y")
+                    onAxis(x, y)
+                    invalidate()
+                    return true
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    dx = 0f; dy = 0f
+                    onAxis(0, 0)
+                    invalidate()
+                    return true
                 }
             }
+            return true
         }
     }
 
     private fun setButton(number: Int, pressed: Boolean) {
         val mask = 1 shl (number - 1)
-
-        buttons = if (pressed) {
-            buttons or mask
-        } else {
-            buttons and mask.inv()
-        }
-
+        buttons = if (pressed) buttons or mask else buttons and mask.inv()
         sendInputReport()
     }
 
@@ -249,324 +429,128 @@ class MainActivity : Activity() {
         val device = connectedDevice ?: return
         val service = hid ?: return
         if (!registered) return
-
-        // Keep this exact order: buttons, X, Y, Rx, Ry.
         val report = byteArrayOf(
             (buttons and 0xFF).toByte(),
             ((buttons ushr 8) and 0xFF).toByte(),
-            xAxis.toByte(),
-            yAxis.toByte(),
-            rxAxis.toByte(),
-            ryAxis.toByte()
+            xAxis.toByte(), yAxis.toByte(), rxAxis.toByte(), ryAxis.toByte()
         )
-
         try {
             val sent = service.sendReport(device, 1, report)
-            Log.d("GamepadHID","X=$xAxis Y=$yAxis Rx=$rxAxis Ry=$ryAxis sent=$sent")
-
-            if (!sent) {
-                Log.w("GamepadHID", "sendReport returned false")
-            }
+            Log.d("GamepadHID", "X=$xAxis Y=$yAxis Rx=$rxAxis Ry=$ryAxis sent=$sent")
+            if (!sent) Log.w("GamepadHID", "sendReport returned false")
         } catch (e: Exception) {
             Log.e("GamepadHID", "Failed to send report", e)
         }
     }
 
-    private inner class AnalogStick(
-        private val label: String,
-        private val onAxis: (Int, Int) -> Unit
-    ) : View(this@MainActivity) {
-
-        private val basePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.rgb(57, 63, 77)
-        }
-
-        private val ringPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.rgb(115, 128, 151)
-            style = Paint.Style.STROKE
-            strokeWidth = 4f
-        }
-
-        private val knobPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.rgb(60, 145, 255)
-        }
-
-        private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.LTGRAY
-            textSize = 28f
-            textAlign = Paint.Align.CENTER
-            typeface = Typeface.DEFAULT_BOLD
-        }
-
-        private var dx = 0f
-        private var dy = 0f
-
-        override fun onDraw(canvas: Canvas) {
-            super.onDraw(canvas)
-
-            val cx = width / 2f
-            val cy = height / 2f
-            val radius = min(width, height) * 0.31f
-            val knobRadius = radius * 0.42f
-
-            canvas.drawText(label, cx, 22f, textPaint)
-            canvas.drawCircle(cx, cy, radius, basePaint)
-            canvas.drawCircle(cx, cy, radius, ringPaint)
-
-            canvas.drawLine(
-                cx - radius, cy,
-                cx + radius, cy,
-                ringPaint
-            )
-
-            canvas.drawLine(
-                cx, cy - radius,
-                cx, cy + radius,
-                ringPaint
-            )
-
-            canvas.drawCircle(
-                cx + dx, cy + dy,
-                knobRadius, knobPaint
-            )
-        }
-
-        override fun onTouchEvent(event: MotionEvent): Boolean {
-            val radius = (min(width, height) * 0.31f)
-                .coerceAtLeast(1f)
-
-            when (event.actionMasked) {
-                MotionEvent.ACTION_DOWN,
-                MotionEvent.ACTION_MOVE -> {
-                    var nx = event.x - width / 2f
-                    var ny = event.y - height / 2f
-
-                    val distance = sqrt(nx * nx + ny * ny)
-
-                    if (distance > radius) {
-                        nx = nx / distance * radius
-                        ny = ny / distance * radius
-                    }
-
-                    dx = nx
-                    dy = ny
-
-                    // Explicit independent horizontal and vertical values.
-                    val x = (nx / radius * 127f)
-                        .toInt().coerceIn(-127, 127)
-
-                    val y = (-ny / radius * 127f)
-                        .toInt().coerceIn(-127, 127)
-
-                    Log.d(
-                        "GamepadStick",
-                        "$label: x=$x, y=$y"
-                    )
-
-                    onAxis(x, y)
-                    invalidate()
-                    return true
-                }
-
-                MotionEvent.ACTION_UP,
-                MotionEvent.ACTION_CANCEL -> {
-                    dx = 0f
-                    dy = 0f
-
-                    Log.d("GamepadStick", "$label: released")
-
-                    onAxis(0, 0)
-                    invalidate()
-                    return true
-                }
-            }
-
-            return true
-        }
-    }
-
     private fun connectHid() {
         if (connecting || registered) return
-
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            val permissions = arrayOf(
-                Manifest.permission.BLUETOOTH_CONNECT,
-                Manifest.permission.BLUETOOTH_ADVERTISE
-            )
-
-            val missing = permissions.filter {
-                checkSelfPermission(it) != PackageManager.PERMISSION_GRANTED
-            }
-
+            val permissions = arrayOf(Manifest.permission.BLUETOOTH_CONNECT, Manifest.permission.BLUETOOTH_ADVERTISE)
+            val missing = permissions.filter { checkSelfPermission(it) != PackageManager.PERMISSION_GRANTED }
             if (missing.isNotEmpty()) {
                 requestPermissions(missing.toTypedArray(), 100)
-                status.text = "Grant Bluetooth permissions, then register again."
+                status.text = "Grant Bluetooth permissions, then tap connect again."
                 return
             }
         }
-
         try {
-            val manager =
-                getSystemService(BLUETOOTH_SERVICE) as BluetoothManager
+            val manager = getSystemService(BLUETOOTH_SERVICE) as BluetoothManager
             val adapter = manager.adapter
-
             if (adapter == null || !adapter.isEnabled) {
-                status.text = "Enable Bluetooth first."
+                status.text = "Bluetooth is off — enable it first."
                 return
             }
-
             connecting = true
             registerButton.isEnabled = false
-            status.text = "Opening Bluetooth HID service..."
-
-            val accepted = adapter.getProfileProxy(
-                this,
-                object : BluetoothProfile.ServiceListener {
-
-                    override fun onServiceConnected(
-                        profile: Int,
-                        proxy: BluetoothProfile
-                    ) {
-                        if (
-                            profile != BluetoothProfile.HID_DEVICE ||
-                            proxy !is BluetoothHidDevice
-                        ) {
-                            connecting = false
-                            registerButton.isEnabled = true
-                            status.text = "HID Device profile unavailable."
-                            return
-                        }
-
-                        hid = proxy
-                        registerGamepad()
-                    }
-
-                    override fun onServiceDisconnected(profile: Int) {
-                        hid = null
-                        connectedDevice = null
-                        registered = false
+            registerButton.alpha = 0.7f
+            status.text = "OPENING HID SERVICE…"
+            statusDot.background = rounded(Color.rgb(239, 174, 74), 20)
+            val accepted = adapter.getProfileProxy(this, object : BluetoothProfile.ServiceListener {
+                override fun onServiceConnected(profile: Int, proxy: BluetoothProfile) {
+                    if (profile != BluetoothProfile.HID_DEVICE || proxy !is BluetoothHidDevice) {
                         connecting = false
-
-                        handler.post {
-                            registerButton.isEnabled = true
-                            status.text = "HID service disconnected."
-                        }
+                        handler.post { registerButton.isEnabled = true; registerButton.alpha = 1f; status.text = "HID PROFILE UNAVAILABLE" }
+                        return
                     }
-                },
-                BluetoothProfile.HID_DEVICE
-            )
-
+                    hid = proxy
+                    registerGamepad()
+                }
+                override fun onServiceDisconnected(profile: Int) {
+                    hid = null; connectedDevice = null; registered = false; connecting = false
+                    handler.post {
+                        registerButton.isEnabled = true; registerButton.alpha = 1f
+                        status.text = "HID SERVICE DISCONNECTED"
+                        statusDot.background = rounded(Color.rgb(230, 91, 101), 20)
+                    }
+                }
+            }, BluetoothProfile.HID_DEVICE)
             if (!accepted) {
-                connecting = false
-                registerButton.isEnabled = true
-                status.text = "Could not open HID service."
+                connecting = false; registerButton.isEnabled = true; registerButton.alpha = 1f
+                status.text = "COULD NOT OPEN HID SERVICE"
             }
         } catch (e: Exception) {
-            connecting = false
-            registerButton.isEnabled = true
-            status.text = "Bluetooth error: ${e.message}"
+            connecting = false; registerButton.isEnabled = true; registerButton.alpha = 1f
+            status.text = "BLUETOOTH ERROR: ${e.message}"
         }
     }
 
     private fun registerGamepad() {
         val service = hid ?: return
-
         try {
-            val sdp = BluetoothHidDeviceAppSdpSettings(
-                "Bluetooth Gamepad",
-                "Bluetooth gamepad for Mac",
-                "Gamepad",
-                0x08,
-                descriptor
-            )
-
+            val sdp = BluetoothHidDeviceAppSdpSettings("Bluetooth Gamepad", "Bluetooth gamepad for Mac", "Gamepad", 0x08, descriptor)
             val callback = object : BluetoothHidDevice.Callback() {
-
-                override fun onAppStatusChanged(
-                    pluggedDevice: BluetoothDevice?,
-                    registeredNow: Boolean
-                ) {
+                override fun onAppStatusChanged(pluggedDevice: BluetoothDevice?, registeredNow: Boolean) {
                     registered = registeredNow
                     connecting = false
-
                     handler.post {
                         registerButton.isEnabled = !registeredNow
-
-                        status.text = if (registeredNow) {
-                            "REGISTERED • Connect from Mac Bluetooth settings"
-                        } else {
-                            "Registration stopped. Check for another HID app."
-                        }
+                        registerButton.alpha = if (registeredNow) 0.55f else 1f
+                        status.text = if (registeredNow) "REGISTERED • CONNECT FROM MAC BLUETOOTH" else "REGISTRATION STOPPED • TRY AGAIN"
+                        statusDot.background = rounded(if (registeredNow) Color.rgb(57, 190, 130) else Color.rgb(239, 174, 74), 20)
                     }
-
-                    if (registeredNow && pluggedDevice != null) {
-                        connectedDevice = pluggedDevice
-                    }
+                    if (registeredNow && pluggedDevice != null) connectedDevice = pluggedDevice
                 }
-
-                override fun onConnectionStateChanged(
-                    device: BluetoothDevice?,
-                    state: Int
-                ) {
+                override fun onConnectionStateChanged(device: BluetoothDevice?, state: Int) {
                     handler.post {
                         when (state) {
                             BluetoothProfile.STATE_CONNECTED -> {
                                 connectedDevice = device
-                                status.text = "MAC CONNECTED • Gamepad ready"
+                                status.text = "MAC CONNECTED • READY TO PLAY"
+                                statusDot.background = rounded(Color.rgb(57, 190, 130), 20)
                                 sendInputReport()
                             }
-
                             BluetoothProfile.STATE_CONNECTING -> {
-                                status.text = "Connecting to Mac..."
+                                status.text = "CONNECTING TO MAC…"
+                                statusDot.background = rounded(Color.rgb(239, 174, 74), 20)
                             }
-
                             BluetoothProfile.STATE_DISCONNECTED -> {
-                                if (connectedDevice == device) {
-                                    connectedDevice = null
-                                }
-
-                                status.text = if (registered) {
-                                    "Registered • Waiting for Mac"
-                                } else {
-                                    "Disconnected"
-                                }
+                                if (connectedDevice == device) connectedDevice = null
+                                status.text = if (registered) "REGISTERED • WAITING FOR MAC" else "DISCONNECTED"
+                                statusDot.background = rounded(Color.rgb(239, 174, 74), 20)
                             }
                         }
                     }
                 }
             }
-
-            val accepted = service.registerApp(
-                sdp, null, null, executor, callback
-            )
-
-            if (accepted) {
-                status.text = "Registration requested..."
-            } else {
-                connecting = false
-                registerButton.isEnabled = true
-                status.text =
-                    "Registration rejected. Another HID app may be active."
+            val accepted = service.registerApp(sdp, null, null, executor, callback)
+            if (accepted) status.text = "REGISTRATION REQUESTED…"
+            else {
+                connecting = false; registerButton.isEnabled = true; registerButton.alpha = 1f
+                status.text = "REGISTRATION REJECTED • CHECK OTHER HID APPS"
             }
         } catch (e: Exception) {
-            connecting = false
-            registerButton.isEnabled = true
-            status.text = "Registration error: ${e.message}"
+            connecting = false; registerButton.isEnabled = true; registerButton.alpha = 1f
+            status.text = "REGISTRATION ERROR: ${e.message}"
         }
     }
 
     override fun onDestroy() {
         try {
             hid?.let {
-                (getSystemService(BLUETOOTH_SERVICE) as BluetoothManager)
-                    .adapter?.closeProfileProxy(
-                        BluetoothProfile.HID_DEVICE,
-                        it
-                    )
+                (getSystemService(BLUETOOTH_SERVICE) as BluetoothManager).adapter?.closeProfileProxy(BluetoothProfile.HID_DEVICE, it)
             }
-        } catch (_: Exception) {
-        }
-
+        } catch (_: Exception) { }
         executor.shutdown()
         super.onDestroy()
     }
