@@ -259,7 +259,8 @@ class MainActivity : Activity() {
             sendInputReport()
         }
         val rightStick = AnalogStick("R", true) { x, y ->
-            rxAxis = -y // Keep the GTA SA-tested mapping unchanged.
+            // Invert the previous right-stick mapping while preserving the axis swap.
+            rxAxis = -y
             ryAxis = x
             sendInputReport()
         }
@@ -368,6 +369,7 @@ class MainActivity : Activity() {
         }
         private var dx = 0f
         private var dy = 0f
+        private var activePointerId = MotionEvent.INVALID_POINTER_ID
 
         override fun onDraw(canvas: Canvas) {
             super.onDraw(canvas)
@@ -393,30 +395,75 @@ class MainActivity : Activity() {
         }
 
         override fun onTouchEvent(event: MotionEvent): Boolean {
-            val radius = (min(width * 0.22f, height * 0.39f)).coerceAtLeast(1f)
+            val radius = min(width * 0.22f, height * 0.39f).coerceAtLeast(1f)
+
+            fun resetStick() {
+                dx = 0f
+                dy = 0f
+                activePointerId = MotionEvent.INVALID_POINTER_ID
+                onAxis(0, 0)
+                Log.d("GamepadStick", "$label released; neutral axes sent")
+                invalidate()
+            }
+
             when (event.actionMasked) {
-                MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE -> {
-                    var nx = event.x - width / 2f
-                    var ny = event.y - (height / 2f + dp(5))
+                MotionEvent.ACTION_DOWN -> {
+                    activePointerId = event.getPointerId(0)
+                }
+
+                MotionEvent.ACTION_POINTER_DOWN -> {
+                    // Keep tracking the original finger; extra fingers must not hijack the stick.
+                    return true
+                }
+
+                MotionEvent.ACTION_MOVE -> {
+                    val pointerIndex = event.findPointerIndex(activePointerId)
+                    if (pointerIndex < 0) {
+                        resetStick()
+                        return true
+                    }
+
+                    var nx = event.getX(pointerIndex) - width / 2f
+                    var ny = event.getY(pointerIndex) - (height / 2f + dp(5))
                     val distance = sqrt(nx * nx + ny * ny)
-                    if (distance > radius) { nx = nx / distance * radius; ny = ny / distance * radius }
-                    dx = nx; dy = ny
-                    val x = (nx / radius * 127f).toInt().coerceIn(-127, 127)
-                    val y = (-ny / radius * 127f).toInt().coerceIn(-127, 127)
-                    Log.d("GamepadStick", "$label: x=$x, y=$y")
+                    if (distance > radius) {
+                        nx = nx / distance * radius
+                        ny = ny / distance * radius
+                    }
+                    dx = nx
+                    dy = ny
+
+                    var x = (nx / radius * 127f).toInt().coerceIn(-127, 127)
+                    var y = (-ny / radius * 127f).toInt().coerceIn(-127, 127)
+
+                    // Small center deadzone prevents tiny touch offsets from drifting the camera.
+                    if (sqrt((x * x + y * y).toFloat()) < 9f) {
+                        x = 0
+                        y = 0
+                    }
+
+                    Log.d("GamepadStick", "$label: x=$x, y=$y, pointer=$activePointerId")
                     onAxis(x, y)
                     invalidate()
                     return true
                 }
+
+                MotionEvent.ACTION_POINTER_UP -> {
+                    val liftedPointerId = event.getPointerId(event.actionIndex)
+                    if (liftedPointerId == activePointerId) {
+                        resetStick()
+                    }
+                    return true
+                }
+
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                    dx = 0f; dy = 0f
-                    onAxis(0, 0)
-                    invalidate()
+                    resetStick()
                     return true
                 }
             }
             return true
         }
+
     }
 
     private fun setButton(number: Int, pressed: Boolean) {
@@ -436,7 +483,7 @@ class MainActivity : Activity() {
         )
         try {
             val sent = service.sendReport(device, 1, report)
-            Log.d("GamepadHID", "X=$xAxis Y=$yAxis Rx=$rxAxis Ry=$ryAxis sent=$sent")
+            Log.d("GamepadHID", "REPORT X=$xAxis Y=$yAxis Rx=$rxAxis Ry=$ryAxis sent=$sent")
             if (!sent) Log.w("GamepadHID", "sendReport returned false")
         } catch (e: Exception) {
             Log.e("GamepadHID", "Failed to send report", e)
