@@ -20,6 +20,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.widget.Button
 import android.widget.LinearLayout
+import android.widget.SeekBar
 import android.widget.TextView
 import java.util.concurrent.Executors
 import kotlin.math.min
@@ -40,6 +41,8 @@ class MainActivity : Activity() {
     private var yAxis = 0
     private var rxAxis = 0
     private var ryAxis = 0
+    // Right-stick sensitivity multiplier; 1.5x is the default.
+    private var rightStickSensitivity = 1.5f
 
     private val handler = Handler(Looper.getMainLooper())
     private val executor = Executors.newSingleThreadExecutor()
@@ -252,6 +255,47 @@ class MainActivity : Activity() {
         controllerPanel.addView(upper)
         addGap(controllerPanel, 2)
 
+        // Compact right-stick sensitivity control on the controller screen.
+        val sensitivityRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(5), dp(1), dp(5), dp(1))
+        }
+        sensitivityRow.addView(text("R STICK", 9f, Color.rgb(87, 96, 112), true))
+        val sensitivityValue = text("1.5×", 10f, Color.rgb(48, 55, 68), true).apply {
+            gravity = Gravity.CENTER
+            setPadding(dp(5), 0, dp(5), 0)
+        }
+        val sensitivitySeek = SeekBar(this).apply {
+            max = 25 // 0.5x to 3.0x in 0.1x steps
+            progress = 10
+            contentDescription = "Right stick sensitivity"
+        }
+        sensitivityRow.addView(sensitivitySeek, LinearLayout.LayoutParams(0, dp(30), 1f))
+        sensitivityRow.addView(sensitivityValue)
+        val resetSensitivity = text("RESET", 9f, Color.rgb(48, 55, 68), true).apply {
+            gravity = Gravity.CENTER
+            setPadding(dp(8), dp(6), dp(8), dp(6))
+            background = rounded(Color.rgb(232, 236, 242), 10)
+            setOnClickListener {
+                sensitivitySeek.progress = 10
+                rightStickSensitivity = 1.5f
+                sensitivityValue.text = "1.5×"
+            }
+        }
+        sensitivityRow.addView(resetSensitivity)
+        sensitivitySeek.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                // Range 0.5x–3.0x, in 0.1x increments.
+                rightStickSensitivity = (progress.coerceIn(0, 25) + 5) / 10f
+                sensitivityValue.text = String.format(java.util.Locale.US, "%.1f×", rightStickSensitivity)
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+        })
+        controllerPanel.addView(sensitivityRow, LinearLayout.LayoutParams(-1, -2))
+        addGap(controllerPanel, 2)
+
         val sticks = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER }
         val leftStick = AnalogStick("L", true) { x, y ->
             xAxis = x
@@ -259,9 +303,9 @@ class MainActivity : Activity() {
             sendInputReport()
         }
         val rightStick = AnalogStick("R", true) { x, y ->
-            // Invert the previous right-stick mapping while preserving the axis swap.
-            rxAxis = -y
-            ryAxis = x
+            // Apply sensitivity without changing the proven axis swap/inversion.
+            rxAxis = (-y * rightStickSensitivity).toInt().coerceIn(-127, 127)
+            ryAxis = (x * rightStickSensitivity).toInt().coerceIn(-127, 127)
             sendInputReport()
         }
         sticks.addView(leftStick, LinearLayout.LayoutParams(0, -1, 1f))
