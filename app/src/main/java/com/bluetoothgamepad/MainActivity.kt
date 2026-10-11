@@ -78,11 +78,11 @@ class MainActivity : Activity() {
         window.navigationBarColor = bg
         @Suppress("DEPRECATION")
         window.decorView.systemUiVisibility = (
-                View.SYSTEM_UI_FLAG_FULLSCREEN or
-                        View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
-                        View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY or
-                        View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                )
+            View.SYSTEM_UI_FLAG_FULLSCREEN or
+                View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
+                View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY or
+                View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+            )
         showConnectionPage()
     }
 
@@ -208,10 +208,54 @@ class MainActivity : Activity() {
         controllerPanel.addView(panelHeader)
         addGap(controllerPanel, 4)
 
-        // The old black rounded bar was only a decorative touchpad placeholder.
-        // It has been removed because it did not send any input.
-        addGap(controllerPanel, 8)
+        val controllerBodyRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        val mainControls = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+        }
+        controllerBodyRow.addView(mainControls, LinearLayout.LayoutParams(0, -1, 1f))
 
+        val sensitivityColumn = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+            setPadding(dp(2), dp(4), dp(2), dp(4))
+        }
+        val sensitivityValue = text("1.5×", 10f, Color.rgb(48, 55, 68), true).apply {
+            gravity = Gravity.CENTER
+            setPadding(0, dp(5), 0, dp(5))
+        }
+        val sensitivitySeek = SeekBar(this).apply {
+            max = 25
+            progress = 10
+            rotation = -90f
+            contentDescription = "Right stick sensitivity"
+            layoutParams = LinearLayout.LayoutParams(dp(190), dp(30))
+        }
+        sensitivityColumn.addView(text("R", 9f, Color.rgb(87, 96, 112), true).apply { gravity = Gravity.CENTER })
+        sensitivityColumn.addView(sensitivitySeek)
+        sensitivityColumn.addView(sensitivityValue)
+        sensitivityColumn.addView(text("RESET", 8f, Color.rgb(48, 55, 68), true).apply {
+            gravity = Gravity.CENTER
+            setPadding(dp(5), dp(5), dp(5), dp(5))
+            background = rounded(Color.rgb(232, 236, 242), 10)
+            setOnClickListener {
+                sensitivitySeek.progress = 10
+                rightStickSensitivity = 1.5f
+                sensitivityValue.text = "1.5×"
+            }
+        })
+        sensitivitySeek.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                rightStickSensitivity = (progress.coerceIn(0, 25) + 5) / 10f
+                sensitivityValue.text = String.format(java.util.Locale.US, "%.1f×", rightStickSensitivity)
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+        })
+        controllerBodyRow.addView(sensitivityColumn, LinearLayout.LayoutParams(dp(42), -1))
         val shoulderRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
@@ -223,7 +267,7 @@ class MainActivity : Activity() {
         shoulderRow.addView(psPill("R1", 6))
         shoulderRow.addView(View(this), LinearLayout.LayoutParams(dp(6), dp(1)))
         shoulderRow.addView(psPill("R2", 8))
-        controllerPanel.addView(shoulderRow)
+        mainControls.addView(shoulderRow)
         addGap(controllerPanel, 4)
 
         val upper = LinearLayout(this).apply {
@@ -231,65 +275,30 @@ class MainActivity : Activity() {
             gravity = Gravity.CENTER_VERTICAL
         }
         val dpadBox = createDiamondPad(
-            top = psButton("↑", 13, Color.rgb(48, 55, 69), 50),
-            left = psButton("←", 14, Color.rgb(48, 55, 69), 50),
-            right = psButton("→", 15, Color.rgb(48, 55, 69), 50),
-            bottom = psButton("↓", 16, Color.rgb(48, 55, 69), 50)
+            top = psButton("↑", 13, Color.rgb(48, 55, 69), 46),
+            left = psButton("←", 14, Color.rgb(48, 55, 69), 46),
+            right = psButton("→", 15, Color.rgb(48, 55, 69), 46),
+            bottom = psButton("↓", 16, Color.rgb(48, 55, 69), 46)
         )
         upper.addView(dpadBox, LinearLayout.LayoutParams(0, -2, 1f))
 
         val faceBox = createDiamondPad(
-            top = psButton("△", 4, Color.rgb(53, 165, 125), 50),
-            left = psButton("□", 3, Color.rgb(226, 91, 150), 50),
-            right = psButton("○", 2, Color.rgb(236, 93, 101), 50),
-            bottom = psButton("×", 1, Color.rgb(73, 143, 237), 50)
+            top = psButton("△", 4, Color.rgb(53, 165, 125), 46),
+            left = psButton("□", 3, Color.rgb(226, 91, 150), 46),
+            right = psButton("○", 2, Color.rgb(236, 93, 101), 46),
+            bottom = psButton("×", 1, Color.rgb(73, 143, 237), 46)
         )
         upper.addView(faceBox, LinearLayout.LayoutParams(0, -2, 1f))
-        controllerPanel.addView(upper)
-        addGap(controllerPanel, 2)
-
-        // Compact right-stick sensitivity control on the controller screen.
-        val sensitivityRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(5), dp(1), dp(5), dp(1))
-        }
-        sensitivityRow.addView(text("R STICK", 9f, Color.rgb(87, 96, 112), true))
-        val sensitivityValue = text("1.5×", 10f, Color.rgb(48, 55, 68), true).apply {
-            gravity = Gravity.CENTER
-            setPadding(dp(5), 0, dp(5), 0)
-        }
-        val sensitivitySeek = SeekBar(this).apply {
-            max = 25 // 0.5x to 3.0x in 0.1x steps
-            progress = 10
-            contentDescription = "Right stick sensitivity"
-        }
-        sensitivityRow.addView(sensitivitySeek, LinearLayout.LayoutParams(0, dp(30), 1f))
-        sensitivityRow.addView(sensitivityValue)
-        val resetSensitivity = text("RESET", 9f, Color.rgb(48, 55, 68), true).apply {
-            gravity = Gravity.CENTER
-            setPadding(dp(8), dp(6), dp(8), dp(6))
-            background = rounded(Color.rgb(232, 236, 242), 10)
-            setOnClickListener {
-                sensitivitySeek.progress = 10
-                rightStickSensitivity = 1.5f
-                sensitivityValue.text = "1.5×"
-            }
-        }
-        sensitivityRow.addView(resetSensitivity)
-        sensitivitySeek.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-                // Range 0.5x–3.0x, in 0.1x increments.
-                rightStickSensitivity = (progress.coerceIn(0, 25) + 5) / 10f
-                sensitivityValue.text = String.format(java.util.Locale.US, "%.1f×", rightStickSensitivity)
-            }
-            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
-            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+        mainControls.addView(upper, LinearLayout.LayoutParams(-1, -2).apply {
+            topMargin = -dp(8)
         })
-        controllerPanel.addView(sensitivityRow, LinearLayout.LayoutParams(-1, -2))
-        addGap(controllerPanel, 2)
+        addGap(controllerPanel, 1)
 
-        val sticks = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER }
+        val sticks = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+        }
+
         val leftStick = AnalogStick("L") { x, y ->
             xAxis = x
             yAxis = -y // Keep the GTA SA-tested mapping unchanged.
@@ -301,14 +310,21 @@ class MainActivity : Activity() {
             ryAxis = (x * rightStickSensitivity).toInt().coerceIn(-127, 127)
             sendInputReport()
         }
-        sticks.addView(leftStick, LinearLayout.LayoutParams(0, -1, 1f))
-        // L3 sits immediately to the right of the left stick; R3 sits immediately
-        // to the left of the right stick, matching the inner positions on a controller.
-        sticks.addView(psPill("L3", 11))
-        sticks.addView(View(this), LinearLayout.LayoutParams(dp(8), dp(1)))
-        sticks.addView(psPill("R3", 12))
-        sticks.addView(rightStick, LinearLayout.LayoutParams(0, -1, 1f))
-        controllerPanel.addView(sticks, LinearLayout.LayoutParams(-1, 0, 1f))
+
+        // Each stick occupies the same half-width as its corresponding pad above.
+        // L3/R3 are overlaid at the inner edges so they don't shift the stick centers.
+        val leftStickZone = FrameLayout(this)
+        leftStickZone.addView(leftStick, FrameLayout.LayoutParams(-1, -1))
+        leftStickZone.addView(psPill("L3", 11), FrameLayout.LayoutParams(-2, -2, Gravity.RIGHT or Gravity.CENTER_VERTICAL))
+
+        val rightStickZone = FrameLayout(this)
+        rightStickZone.addView(rightStick, FrameLayout.LayoutParams(-1, -1))
+        rightStickZone.addView(psPill("R3", 12), FrameLayout.LayoutParams(-2, -2, Gravity.LEFT or Gravity.CENTER_VERTICAL))
+
+        sticks.addView(leftStickZone, LinearLayout.LayoutParams(0, -1, 1f))
+        sticks.addView(View(this), LinearLayout.LayoutParams(dp(24), 1))
+        sticks.addView(rightStickZone, LinearLayout.LayoutParams(0, -1, 1f))
+        mainControls.addView(sticks, LinearLayout.LayoutParams(-1, 0, 1f))
         addGap(controllerPanel, 2)
 
         val stickClickRow = LinearLayout(this).apply {
@@ -318,7 +334,15 @@ class MainActivity : Activity() {
         stickClickRow.addView(psPill("SELECT", 9))
         stickClickRow.addView(View(this), LinearLayout.LayoutParams(dp(12), dp(1)))
         stickClickRow.addView(psPill("START", 10))
-        controllerPanel.addView(stickClickRow)
+        mainControls.addView(stickClickRow)
+        controllerPanel.addView(controllerBodyRow, LinearLayout.LayoutParams(-1, 0, 1f))
+
+
+        // The old black rounded bar was only a decorative touchpad placeholder.
+        // It has been removed because it did not send any input.
+        addGap(controllerPanel, 8)
+
+
 
         setContentView(root)
         pageRoot = root
@@ -330,10 +354,10 @@ class MainActivity : Activity() {
         right: View,
         bottom: View
     ): LinearLayout {
-        val cell = dp(58)
+        val cell = dp(44)
         fun cell(view: View): FrameLayout = FrameLayout(this).apply {
             layoutParams = LinearLayout.LayoutParams(cell, cell)
-            addView(view, FrameLayout.LayoutParams(dp(50), dp(50), Gravity.CENTER))
+            addView(view, FrameLayout.LayoutParams(dp(46), dp(46), Gravity.CENTER))
         }
         val pad = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -444,10 +468,9 @@ class MainActivity : Activity() {
             super.onDraw(canvas)
             val cx = width / 2f
             val cy = height / 2f + dp(5)
-            val radius = min(width * 0.32f, height * 0.45f)
-            val knobRadius = radius * 0.56f
+            val radius = min(width * 0.38f, height * 0.49f)
+            val knobRadius = radius * 0.64f
             labelPaint.color = Color.rgb(87, 96, 112)
-            canvas.drawText(if (label == "L") "LEFT STICK" else "RIGHT STICK", cx, dp(13).toFloat(), labelPaint)
             basePaint.color = Color.rgb(210, 216, 226)
             canvas.drawCircle(cx, cy, radius, basePaint)
             ringPaint.color = Color.rgb(160, 169, 184)
@@ -464,7 +487,7 @@ class MainActivity : Activity() {
         }
 
         override fun onTouchEvent(event: MotionEvent): Boolean {
-            val radius = min(width * 0.32f, height * 0.45f).coerceAtLeast(1f)
+            val radius = min(width * 0.38f, height * 0.49f).coerceAtLeast(1f)
 
             fun resetStick() {
                 dx = 0f
