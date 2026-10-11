@@ -19,6 +19,7 @@ import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.widget.Button
+import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.SeekBar
 import android.widget.TextView
@@ -77,11 +78,11 @@ class MainActivity : Activity() {
         window.navigationBarColor = bg
         @Suppress("DEPRECATION")
         window.decorView.systemUiVisibility = (
-            View.SYSTEM_UI_FLAG_FULLSCREEN or
-                View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
-                View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY or
-                View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-            )
+                View.SYSTEM_UI_FLAG_FULLSCREEN or
+                        View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
+                        View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY or
+                        View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                )
         showConnectionPage()
     }
 
@@ -207,12 +208,9 @@ class MainActivity : Activity() {
         controllerPanel.addView(panelHeader)
         addGap(controllerPanel, 4)
 
-        val touchpad = View(this).apply {
-            background = rounded(Color.rgb(39, 44, 55), 20, Color.rgb(115, 122, 135), dp(1))
-            layoutParams = LinearLayout.LayoutParams(dp(150), dp(36)).apply { gravity = Gravity.CENTER }
-        }
-        controllerPanel.addView(touchpad)
-        addGap(controllerPanel, 5)
+        // The old black rounded bar was only a decorative touchpad placeholder.
+        // It has been removed because it did not send any input.
+        addGap(controllerPanel, 8)
 
         val shoulderRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -232,25 +230,20 @@ class MainActivity : Activity() {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
         }
-        val dpadBox = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER }
-        // D-pad uses dedicated button bits 13-16; shoulder buttons remain separate.
-        dpadBox.addView(psButton("↑", 13, Color.rgb(48, 55, 69), 34))
-        val dpadMiddle = LinearLayout(this).apply { gravity = Gravity.CENTER }
-        dpadMiddle.addView(psButton("←", 14, Color.rgb(48, 55, 69), 34))
-        dpadMiddle.addView(View(this), LinearLayout.LayoutParams(dp(28), dp(28)))
-        dpadMiddle.addView(psButton("→", 15, Color.rgb(48, 55, 69), 34))
-        dpadBox.addView(dpadMiddle)
-        dpadBox.addView(psButton("↓", 16, Color.rgb(48, 55, 69), 34))
+        val dpadBox = createDiamondPad(
+            top = psButton("↑", 13, Color.rgb(48, 55, 69), 50),
+            left = psButton("←", 14, Color.rgb(48, 55, 69), 50),
+            right = psButton("→", 15, Color.rgb(48, 55, 69), 50),
+            bottom = psButton("↓", 16, Color.rgb(48, 55, 69), 50)
+        )
         upper.addView(dpadBox, LinearLayout.LayoutParams(0, -2, 1f))
 
-        val faceBox = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER }
-        faceBox.addView(psButton("△", 4, Color.rgb(53, 165, 125), 34))
-        val faceMiddle = LinearLayout(this).apply { gravity = Gravity.CENTER }
-        faceMiddle.addView(psButton("□", 3, Color.rgb(226, 91, 150), 34))
-        faceMiddle.addView(View(this), LinearLayout.LayoutParams(dp(6), dp(6)))
-        faceMiddle.addView(psButton("○", 2, Color.rgb(236, 93, 101), 34))
-        faceBox.addView(faceMiddle)
-        faceBox.addView(psButton("×", 1, Color.rgb(73, 143, 237), 34))
+        val faceBox = createDiamondPad(
+            top = psButton("△", 4, Color.rgb(53, 165, 125), 50),
+            left = psButton("□", 3, Color.rgb(226, 91, 150), 50),
+            right = psButton("○", 2, Color.rgb(236, 93, 101), 50),
+            bottom = psButton("×", 1, Color.rgb(73, 143, 237), 50)
+        )
         upper.addView(faceBox, LinearLayout.LayoutParams(0, -2, 1f))
         controllerPanel.addView(upper)
         addGap(controllerPanel, 2)
@@ -297,18 +290,23 @@ class MainActivity : Activity() {
         addGap(controllerPanel, 2)
 
         val sticks = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER }
-        val leftStick = AnalogStick("L", true) { x, y ->
+        val leftStick = AnalogStick("L") { x, y ->
             xAxis = x
             yAxis = -y // Keep the GTA SA-tested mapping unchanged.
             sendInputReport()
         }
-        val rightStick = AnalogStick("R", true) { x, y ->
+        val rightStick = AnalogStick("R") { x, y ->
             // Apply sensitivity without changing the proven axis swap/inversion.
             rxAxis = (-y * rightStickSensitivity).toInt().coerceIn(-127, 127)
             ryAxis = (x * rightStickSensitivity).toInt().coerceIn(-127, 127)
             sendInputReport()
         }
         sticks.addView(leftStick, LinearLayout.LayoutParams(0, -1, 1f))
+        // L3 sits immediately to the right of the left stick; R3 sits immediately
+        // to the left of the right stick, matching the inner positions on a controller.
+        sticks.addView(psPill("L3", 11))
+        sticks.addView(View(this), LinearLayout.LayoutParams(dp(8), dp(1)))
+        sticks.addView(psPill("R3", 12))
         sticks.addView(rightStick, LinearLayout.LayoutParams(0, -1, 1f))
         controllerPanel.addView(sticks, LinearLayout.LayoutParams(-1, 0, 1f))
         addGap(controllerPanel, 2)
@@ -317,17 +315,45 @@ class MainActivity : Activity() {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
         }
-        stickClickRow.addView(psPill("L3", 11))
-        stickClickRow.addView(View(this), LinearLayout.LayoutParams(dp(18), dp(1)))
         stickClickRow.addView(psPill("SELECT", 9))
-        stickClickRow.addView(View(this), LinearLayout.LayoutParams(dp(10), dp(1)))
+        stickClickRow.addView(View(this), LinearLayout.LayoutParams(dp(12), dp(1)))
         stickClickRow.addView(psPill("START", 10))
-        stickClickRow.addView(View(this), LinearLayout.LayoutParams(dp(18), dp(1)))
-        stickClickRow.addView(psPill("R3", 12))
         controllerPanel.addView(stickClickRow)
 
         setContentView(root)
         pageRoot = root
+    }
+
+    private fun createDiamondPad(
+        top: View,
+        left: View,
+        right: View,
+        bottom: View
+    ): LinearLayout {
+        val cell = dp(58)
+        fun cell(view: View): FrameLayout = FrameLayout(this).apply {
+            layoutParams = LinearLayout.LayoutParams(cell, cell)
+            addView(view, FrameLayout.LayoutParams(dp(50), dp(50), Gravity.CENTER))
+        }
+        val pad = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+        }
+        pad.addView(LinearLayout(this).apply {
+            gravity = Gravity.CENTER
+            addView(cell(top))
+        })
+        pad.addView(LinearLayout(this).apply {
+            gravity = Gravity.CENTER
+            addView(cell(left))
+            addView(cell(View(this@MainActivity)))
+            addView(cell(right))
+        })
+        pad.addView(LinearLayout(this).apply {
+            gravity = Gravity.CENTER
+            addView(cell(bottom))
+        })
+        return pad
     }
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
@@ -402,7 +428,6 @@ class MainActivity : Activity() {
 
     private inner class AnalogStick(
         private val label: String,
-        private val lightTheme: Boolean,
         private val onAxis: (Int, Int) -> Unit
     ) : View(this@MainActivity) {
         private val basePaint = Paint(Paint.ANTI_ALIAS_FLAG)
@@ -419,7 +444,7 @@ class MainActivity : Activity() {
             super.onDraw(canvas)
             val cx = width / 2f
             val cy = height / 2f + dp(5)
-            val radius = min(width * 0.22f, height * 0.39f)
+            val radius = min(width * 0.32f, height * 0.45f)
             val knobRadius = radius * 0.56f
             labelPaint.color = Color.rgb(87, 96, 112)
             canvas.drawText(if (label == "L") "LEFT STICK" else "RIGHT STICK", cx, dp(13).toFloat(), labelPaint)
@@ -439,7 +464,7 @@ class MainActivity : Activity() {
         }
 
         override fun onTouchEvent(event: MotionEvent): Boolean {
-            val radius = min(width * 0.22f, height * 0.39f).coerceAtLeast(1f)
+            val radius = min(width * 0.32f, height * 0.45f).coerceAtLeast(1f)
 
             fun resetStick() {
                 dx = 0f
@@ -467,8 +492,10 @@ class MainActivity : Activity() {
                         return true
                     }
 
-                    var nx = event.getX(pointerIndex) - width / 2f
-                    var ny = event.getY(pointerIndex) - (height / 2f + dp(5))
+                    val fingerX = event.getX(pointerIndex)
+                    val fingerY = event.getY(pointerIndex)
+                    var nx = fingerX - width / 2f
+                    var ny = fingerY - (height / 2f + dp(5))
                     val distance = sqrt(nx * nx + ny * ny)
                     if (distance > radius) {
                         nx = nx / distance * radius
