@@ -304,10 +304,12 @@ class MainActivity : Activity() {
             yAxis = -y // Keep the GTA SA-tested mapping unchanged.
             sendInputReport()
         }
+        
         val rightStick = AnalogStick("R") { x, y ->
-            // Apply sensitivity without changing the proven axis swap/inversion.
-            rxAxis = (-y * rightStickSensitivity).toInt().coerceIn(-127, 127)
-            ryAxis = (x * rightStickSensitivity).toInt().coerceIn(-127, 127)
+            // Horizontal touch movement → horizontal Rx axis
+            // Vertical touch movement → vertical Ry axis
+            rxAxis = (x * rightStickSensitivity).toInt().coerceIn(-127, 127)
+            ryAxis = (y * rightStickSensitivity).toInt().coerceIn(-127, 127)
             sendInputReport()
         }
 
@@ -639,7 +641,7 @@ class MainActivity : Activity() {
     private fun registerGamepad() {
         val service = hid ?: return
         try {
-            val sdp = BluetoothHidDeviceAppSdpSettings("Bluetooth Gamepad", "Bluetooth gamepad for Mac", "Gamepad", 0x08, descriptor)
+            val sdp = BluetoothHidDeviceAppSdpSettings("Bluetooth Gamepad", "Bluetooth gamepad for Mac", "Gamepad", BluetoothHidDevice.SUBCLASS2_GAMEPAD, descriptor)
             val callback = object : BluetoothHidDevice.Callback() {
                 override fun onAppStatusChanged(pluggedDevice: BluetoothDevice?, registeredNow: Boolean) {
                     registered = registeredNow
